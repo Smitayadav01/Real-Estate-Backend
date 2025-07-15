@@ -1,5 +1,4 @@
 const express = require('express');
-app.set('trust proxy', 1);
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -13,6 +12,7 @@ const propertyRoutes = require('./routes/properties');
 const inquiryRoutes = require('./routes/inquiries');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB
