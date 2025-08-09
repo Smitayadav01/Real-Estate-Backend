@@ -37,34 +37,23 @@ const validateUserRegistration = [
   validate
 ];
 
-// User Login (accept either email or phone)
+// User Login (phone required, email optional)
 const validateUserLogin = [
+  body('phone')
+    .notEmpty()
+    .withMessage('Phone number is required')
+    .matches(/^[\+]?[1-9][\d]{0,15}$/)
+    .withMessage('Invalid phone number'),
+
   body('email')
     .optional({ checkFalsy: true })
     .isEmail()
     .withMessage('Invalid email')
     .normalizeEmail(),
 
-  body('phone')
-    .optional({ checkFalsy: true })
-    .matches(/^[\+]?[1-9][\d]{0,15}$/)
-    .withMessage('Invalid phone number'),
-
   body('password')
     .notEmpty()
     .withMessage('Password is required'),
-
-  // Custom validator to ensure at least one identifier is provided
-  (req, res, next) => {
-    const { email, phone } = req.body;
-    if (!email && !phone) {
-      return res.status(400).json({
-        success: false,
-        message: 'Either email or phone is required for login'
-      });
-    }
-    next();
-  },
 
   validate
 ];
