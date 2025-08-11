@@ -12,7 +12,7 @@ const router = express.Router();
 // GET all approved properties with filtering
 router.get('/', async (req, res) => {
   try {
-    const {
+    let {
       page = 1,
       limit = 12,
       location,
@@ -25,6 +25,9 @@ router.get('/', async (req, res) => {
       sortBy = 'createdAt',
       sortOrder = 'desc'
     } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
 
     const filter = { isApproved: true, isActive: true };
 
@@ -43,21 +46,22 @@ router.get('/', async (req, res) => {
 
     const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
-    const properties = await Property.find(filter)
-      .populate('owner', 'name email phone')
-      .sort(sort)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
-
-    const total = await Property.countDocuments(filter);
+    const [properties, total] = await Promise.all([
+      Property.find(filter)
+        .populate('owner', 'name email phone')
+        .sort(sort)
+        .limit(limit)
+        .skip((page - 1) * limit)
+        .lean(),
+      Property.countDocuments(filter)
+    ]);
 
     res.json({
       success: true,
       data: {
         properties,
         pagination: {
-          currentPage: parseInt(page),
+          currentPage: page,
           totalPages: Math.ceil(total / limit),
           totalProperties: total,
           hasNext: page < Math.ceil(total / limit),
@@ -65,7 +69,6 @@ router.get('/', async (req, res) => {
         }
       }
     });
-
   } catch (error) {
     console.error('Get properties error:', error);
     res.status(500).json({
@@ -80,9 +83,7 @@ router.get('/', async (req, res) => {
 // Get current user's properties
 router.get('/user/my-properties', auth, async (req, res) => {
   try {
-    const properties = await Property.find({ owner: req.user._id })
-      .sort({ createdAt: -1 });
-
+    const properties = await Property.find({ owner: req.user._id }).sort({ createdAt: -1 });
     res.json({ success: true, data: { properties } });
   } catch (error) {
     console.error('Get user properties error:', error);
@@ -121,7 +122,10 @@ router.post('/', auth, validateProperty, async (req, res) => {
       owner: req.user._id,
       isApproved: true,
       isActive: true,
-      images: [req.body.image || 'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=800']
+      images: [
+        req.body.image ||
+        'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ]
     };
 
     const property = new Property(propertyData);
@@ -131,8 +135,8 @@ router.post('/', auth, validateProperty, async (req, res) => {
     try {
       await sendPropertyNotificationEmail({
         propertyData: property,
-        ownerEmail: property.ownerEmail,
-        ownerName: property.ownerName
+        ownerEmail: property.owner.email,
+        ownerName: property.owner.name
       });
     } catch (emailError) {
       console.error('Email notification error:', emailError);
@@ -143,7 +147,6 @@ router.post('/', auth, validateProperty, async (req, res) => {
       message: 'Property listed successfully and is now live on the website!',
       data: { property }
     });
-
   } catch (error) {
     console.error('Create property error:', error);
     res.status(500).json({
@@ -162,17 +165,12 @@ router.get('/:id', async (req, res) => {
       .populate('owner', 'name email phone');
 
     if (!property || !property.isApproved || !property.isActive) {
-      return res.status(404).json({
-        success: false,
-        message: 'Property not available'
-      });
+      return res.status(404).json({ success: false, message: 'Property not available' });
     }
 
-    property.views += 1;
-    await property.save();
+    await Property.updateOne({ _id: property._id }, { $inc: { views: 1 } });
 
     res.json({ success: true, data: { property } });
-
   } catch (error) {
     console.error('Get property error:', error);
     res.status(500).json({
@@ -199,7 +197,7 @@ router.put('/:id', auth, validateProperty, async (req, res) => {
     }
 
     Object.assign(property, req.body);
-    property.isApproved = false;
+    property.isApproved = false; // mark for re-approval
 
     await property.save();
     await property.populate('owner', 'name email phone');
@@ -209,7 +207,6 @@ router.put('/:id', auth, validateProperty, async (req, res) => {
       message: 'Property updated successfully! It will be reviewed again.',
       data: { property }
     });
-
   } catch (error) {
     console.error('Update property error:', error);
     res.status(500).json({
@@ -236,9 +233,7 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     await Property.findByIdAndDelete(req.params.id);
-
     res.json({ success: true, message: 'Property deleted successfully' });
-
   } catch (error) {
     console.error('Delete property error:', error);
     res.status(500).json({
@@ -268,7 +263,6 @@ router.post('/:id/wishlist', auth, async (req, res) => {
       await user.save();
       res.json({ success: true, message: 'Property added to wishlist', data: { inWishlist: true } });
     }
-
   } catch (error) {
     console.error('Wishlist toggle error:', error);
     res.status(500).json({
