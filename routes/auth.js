@@ -102,9 +102,10 @@ router.post(
         });
       }
 
+      // Find user by phone or email
       const user = await User.findOne({
         $or: [{ phone }, { email }],
-      }).select('+password'); // ✅ Ensure password is fetched
+      }).select('+password');
 
       if (!user) {
         return res.status(400).json({
@@ -114,7 +115,7 @@ router.post(
       }
 
       if (!user.isActive) {
-        return res.status(400).json({
+        return res.status(403).json({
           success: false,
           message: 'Account is deactivated. Please contact support.',
         });
@@ -123,11 +124,14 @@ router.post(
       if (!user.password) {
         return res.status(500).json({
           success: false,
-          message: 'No password found for this user. Please reset password.',
+          message: 'No password set for this user. Please reset password.',
         });
       }
 
-      const isPasswordValid = await user.comparePassword(password);
+      // Compare password
+      const bcrypt = require('bcryptjs');
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+
       if (!isPasswordValid) {
         return res.status(400).json({
           success: false,
@@ -135,6 +139,7 @@ router.post(
         });
       }
 
+      // Generate token
       const token = generateToken(user._id);
 
       res.json({
@@ -152,15 +157,18 @@ router.post(
           token,
         },
       });
+
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({
         success: false,
         message: 'Server error during login',
+        error: error.message, // <-- will help debug on Render logs
       });
     }
   }
 );
+
 
 // @route   GET /api/auth/me
 router.get('/me', auth, async (req, res) => {
