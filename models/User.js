@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters long'],
-    select: false  // ✅ Hides password field by default when querying
+    select: false // Hidden by default in queries
   },
   role: {
     type: String,
@@ -71,9 +71,15 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// ✅ Compare candidate password
+// ✅ Compare candidate password safely
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return await bcrypt.compare(candidatePassword, this.password);
+  if (!candidatePassword) {
+    throw new Error('No password provided for comparison');
+  }
+  if (!this.password) {
+    throw new Error('No password stored in user document — did you forget to select it?');
+  }
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 // ✅ Remove sensitive info from output

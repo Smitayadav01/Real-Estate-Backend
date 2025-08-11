@@ -88,21 +88,28 @@ router.post(
 router.post(
   '/login',
   [
-    body('phone')
-      .matches(/^[\+]?[1-9][\d]{0,15}$/)
-      .withMessage('Please provide a valid phone number'),
     body('password').notEmpty().withMessage('Password is required'),
     validate,
   ],
   async (req, res) => {
     try {
-      const { phone, password } = req.body;
+      const { phone, email, password } = req.body;
 
-      const user = await User.findOne({ phone });
+      if (!phone && !email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Phone or email is required',
+        });
+      }
+
+      const user = await User.findOne({
+        $or: [{ phone }, { email }],
+      }).select('+password'); // ✅ Ensure password is fetched
+
       if (!user) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid phone number or password',
+          message: 'Invalid credentials',
         });
       }
 
@@ -113,11 +120,18 @@ router.post(
         });
       }
 
+      if (!user.password) {
+        return res.status(500).json({
+          success: false,
+          message: 'No password found for this user. Please reset password.',
+        });
+      }
+
       const isPasswordValid = await user.comparePassword(password);
       if (!isPasswordValid) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid phone number or password',
+          message: 'Invalid credentials',
         });
       }
 
