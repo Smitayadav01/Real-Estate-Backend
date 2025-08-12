@@ -1,15 +1,16 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { body, validationResult } = require('express-validator');
+
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
-const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
-// Generate JWT token
-const generateToken = (userId) => {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
-};
+// JWT generator
+const generateToken = (userId) =>
+  jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
 // Validation middleware
 const validate = (req, res, next) => {
@@ -24,7 +25,9 @@ const validate = (req, res, next) => {
   next();
 };
 
-// @route   POST /api/auth/register
+/**
+ * @route POST /api/auth/register
+ */
 router.post(
   '/register',
   [
@@ -39,7 +42,7 @@ router.post(
   ],
   async (req, res) => {
     try {
-      const { name, phone, password, email } = req.body;
+      const { name, phone, email, password } = req.body;
 
       const existingUser = await User.findOne({
         $or: [{ phone }, { email }],
@@ -48,9 +51,10 @@ router.post(
       if (existingUser) {
         return res.status(400).json({
           success: false,
-          message: existingUser.phone === phone
-            ? 'User with this phone number already exists'
-            : 'User with this email already exists',
+          message:
+            existingUser.phone === phone
+              ? 'User with this phone number already exists'
+              : 'User with this email already exists',
         });
       }
 
@@ -84,13 +88,12 @@ router.post(
   }
 );
 
-// @route   POST /api/auth/login
+/**
+ * @route POST /api/auth/login
+ */
 router.post(
   '/login',
-  [
-    body('password').notEmpty().withMessage('Password is required'),
-    validate,
-  ],
+  [body('password').notEmpty().withMessage('Password is required'), validate],
   async (req, res) => {
     try {
       const { phone, email, password } = req.body;
@@ -102,7 +105,7 @@ router.post(
         });
       }
 
-      // Find user by phone or email
+      // Explicitly fetch password
       const user = await User.findOne({
         $or: [{ phone }, { email }],
       }).select('+password');
@@ -114,32 +117,22 @@ router.post(
         });
       }
 
-      if (!user.isActive) {
-        return res.status(403).json({
-          success: false,
-          message: 'Account is deactivated. Please contact support.',
-        });
-      }
-
       if (!user.password) {
         return res.status(500).json({
           success: false,
-          message: 'No password set for this user. Please reset password.',
+          message: 'Password not set for this user. Please reset password.',
         });
       }
 
-      // Compare password
-      const bcrypt = require('bcryptjs');
-      const isPasswordValid = await bcrypt.compare(password, user.password);
-
-      if (!isPasswordValid) {
+      // Compare password safely
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
         return res.status(400).json({
           success: false,
           message: 'Invalid credentials',
         });
       }
 
-      // Generate token
       const token = generateToken(user._id);
 
       res.json({
@@ -157,20 +150,20 @@ router.post(
           token,
         },
       });
-
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({
         success: false,
         message: 'Server error during login',
-        error: error.message, // <-- will help debug on Render logs
+        error: error.message,
       });
     }
   }
 );
 
-
-// @route   GET /api/auth/me
+/**
+ * @route GET /api/auth/me
+ */
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate('wishlist');
@@ -197,7 +190,9 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-// @route   PUT /api/auth/profile
+/**
+ * @route PUT /api/auth/profile
+ */
 router.put('/profile', auth, async (req, res) => {
   try {
     const { name, phone } = req.body;
