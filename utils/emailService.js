@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 
 // Create email transporter
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
@@ -18,8 +18,7 @@ const sendPropertyNotificationEmail = async ({ propertyData, ownerEmail, ownerNa
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: 'admin@vasaiproperties.com',
-      cc: ownerEmail,
+      to: [ 'admin@vasaiproperties.com', ownerEmail ],
       subject: 'New Property Listing Submitted - Vasai Properties',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb;">
