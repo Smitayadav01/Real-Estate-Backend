@@ -11,10 +11,10 @@ const userSchema = new mongoose.Schema({
   },
   email: {
     type: String,
-    required: false, // Optional
-    unique: false,   // Not enforced as unique
     lowercase: true,
     trim: true,
+    unique: false, // We'll handle unique manually
+    sparse: true,  // Allow null/undefined without unique conflicts
     match: [
       /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
       'Please enter a valid email'
@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters long'],
-    select: false // Hidden by default in queries
+    select: false // Hidden unless explicitly selected
   },
   role: {
     type: String,
@@ -77,12 +77,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
     throw new Error('No password provided for comparison');
   }
   if (!this.password) {
-    throw new Error('No password stored in user document — did you forget to select it?');
+    throw new Error('No password stored in this user document — make sure to use .select("+password") when querying.');
   }
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ✅ Remove sensitive info from output
+// ✅ Remove sensitive info from API output
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
   delete user.password;
