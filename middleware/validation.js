@@ -62,7 +62,7 @@ const validateUserLogin = [
 const validateProperty = [
   body('title')
     .trim()
-    .isLength({ min: 5, max: 100 })
+    .isLength({ min: 3, max: 100 })
     .withMessage('Title must be between 5 and 100 characters'),
 
   body('type')
@@ -87,12 +87,12 @@ const validateProperty = [
 
   body('location')
     .trim()
-    .isLength({ min: 5, max: 100 })
+    .isLength({ min: 1, max: 100 })
     .withMessage('Location must be between 5 and 100 characters'),
 
   body('description')
     .trim()
-    .isLength({ min: 20, max: 1000 })
+    .isLength({ min: 5, max: 1000 })
     .withMessage('Description must be between 20 and 1000 characters'),
 
   body('status')
