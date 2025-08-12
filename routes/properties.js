@@ -1,5 +1,3 @@
-// routes/properties.js
-
 const express = require('express');
 const Property = require('../models/Property');
 const User = require('../models/User');
@@ -8,10 +6,6 @@ const { validateProperty } = require('../middleware/validation');
 const { sendPropertyNotificationEmail } = require('../utils/emailService');
 
 const router = express.Router();
-
-// Allowed values for enums
-const ALLOWED_TYPES = ['apartment', 'house', 'villa', 'commercial'];
-const ALLOWED_STATUS = ['sale', 'rent'];
 
 /* -------------------- PUBLIC ROUTES -------------------- */
 
@@ -121,35 +115,17 @@ router.get('/user/wishlist', auth, async (req, res) => {
 });
 
 // Create a new property listing
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, validateProperty, async (req, res) => {
   try {
-    const { type, status, title, description, price, location, bhk, images } = req.body;
-
-    // Validate enums
-    if (!ALLOWED_TYPES.includes(type)) {
-      return res.status(400).json({ success: false, message: `Invalid type. Allowed: ${ALLOWED_TYPES.join(', ')}` });
-    }
-    if (!ALLOWED_STATUS.includes(status)) {
-      return res.status(400).json({ success: false, message: `Invalid status. Allowed: ${ALLOWED_STATUS.join(', ')}` });
-    }
-
     const propertyData = {
-      title,
-      description: description || '',
-      price: price || 0,
-      location: location || 'Not specified',
-      bhk: bhk || 1,
-      type,
-      status,
+      ...req.body,
       owner: req.user._id,
-      ownerName: req.user.name,
-      ownerPhone: req.user.phone,
-      ownerEmail: req.user.email,
       isApproved: true,
       isActive: true,
-      images: images && images.length > 0
-        ? images
-        : ['https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=800']
+      images: [
+        req.body.image ||
+        'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=800'
+      ]
     };
 
     const property = new Property(propertyData);
@@ -180,3 +156,120 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+/* -------------------- DYNAMIC ROUTES -------------------- */
+
+// Get single property by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id)
+      .populate('owner', 'name email phone');
+
+    if (!property || !property.isApproved || !property.isActive) {
+      return res.status(404).json({ success: false, message: 'Property not available' });
+    }
+
+    await Property.updateOne({ _id: property._id }, { $inc: { views: 1 } });
+
+    res.json({ success: true, data: { property } });
+  } catch (error) {
+    console.error('Get property error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching property'
+    });
+  }
+});
+
+// Update property (owner only)
+router.put('/:id', auth, validateProperty, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json({ success: false, message: 'Property not found' });
+    }
+
+    if (property.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only update your own properties.'
+      });
+    }
+
+    Object.assign(property, req.body);
+    property.isApproved = false; // mark for re-approval
+
+    await property.save();
+    await property.populate('owner', 'name email phone');
+
+    res.json({
+      success: true,
+      message: 'Property updated successfully! It will be reviewed again.',
+      data: { property }
+    });
+  } catch (error) {
+    console.error('Update property error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating property'
+    });
+  }
+});
+
+// Delete property (owner only)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+
+    if (!property) {
+      return res.status(404).json({ success: false, message: 'Property not found' });
+    }
+
+    if (property.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only delete your own properties.'
+      });
+    }
+
+    await Property.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Property deleted successfully' });
+  } catch (error) {
+    console.error('Delete property error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while deleting property'
+    });
+  }
+});
+
+// Add/Remove property from wishlist
+router.post('/:id/wishlist', auth, async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) {
+      return res.status(404).json({ success: false, message: 'Property not found' });
+    }
+
+    const user = await User.findById(req.user._id);
+    const index = user.wishlist.indexOf(req.params.id);
+
+    if (index > -1) {
+      user.wishlist.splice(index, 1);
+      await user.save();
+      res.json({ success: true, message: 'Property removed from wishlist', data: { inWishlist: false } });
+    } else {
+      user.wishlist.push(req.params.id);
+      await user.save();
+      res.json({ success: true, message: 'Property added to wishlist', data: { inWishlist: true } });
+    }
+  } catch (error) {
+    console.error('Wishlist toggle error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating wishlist'
+    });
+  }
+});
+
+module.exports = router;
