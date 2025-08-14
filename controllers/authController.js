@@ -91,7 +91,6 @@ const loginUser = async (req, res) => {
   try {
     let { phone, email, password } = req.body;
 
-    // Validation: either phone or email + password required
     if ((!phone && !email) || !password) {
       return res.status(400).json({
         success: false,
@@ -99,7 +98,7 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Normalize input to match database
+    // Normalize input
     if (phone) phone = phone.replace(/\s+/g, '');
     if (email) email = email.trim().toLowerCase();
 
@@ -108,7 +107,6 @@ const loginUser = async (req, res) => {
     if (phone) query.phone = phone;
     if (email) query.email = email;
 
-    // Find user
     const user = await User.findOne(query).select("+password");
 
     if (!user) {
@@ -118,7 +116,6 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({
@@ -127,10 +124,8 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Generate JWT
     const token = generateToken(user._id);
 
-    // Respond with user data + token
     res.json({
       success: true,
       message: "Login successful",
@@ -156,6 +151,40 @@ const loginUser = async (req, res) => {
   }
 };
 
+// ✅ GET LOGGED-IN USER
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate("wishlist");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          role: user.role,
+          wishlist: user.wishlist,
+          createdAt: user.createdAt,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching user data",
+    });
+  }
+};
 
 // ✅ UPDATE PROFILE
 const updateProfile = async (req, res) => {
