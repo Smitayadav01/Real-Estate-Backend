@@ -89,7 +89,7 @@ const registerUser = async (req, res) => {
 // ✅ LOGIN USER
 const loginUser = async (req, res) => {
   try {
-    const { phone, email, password } = req.body;
+    let { phone, email, password } = req.body;
 
     if ((!phone && !email) || !password) {
       return res.status(400).json({
@@ -98,7 +98,11 @@ const loginUser = async (req, res) => {
       });
     }
 
-    // Build query dynamically based on provided fields
+    // Normalize input
+    if (phone) phone = phone.replace(/\s+/g, '');
+    if (email) email = email.trim().toLowerCase();
+
+    // Build query dynamically
     const query = {};
     if (phone) query.phone = phone;
     if (email) query.email = email;
