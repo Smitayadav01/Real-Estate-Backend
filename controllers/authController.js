@@ -87,53 +87,33 @@ const registerUser = async (req, res) => {
 
 
 // ✅ LOGIN USER (Phone only)
-import bcrypt from "bcryptjs";
-import User from "../models/User.js"; // adjust path if needed
-import jwt from "jsonwebtoken";
-
-export const loginUser = async (req, res) => {
+const loginUser = async (req, res) => {
   try {
     console.log("📥 Incoming login payload:", req.body);
 
-    // 1️⃣ Extract and normalize inputs
     const phone = req.body.phone ? req.body.phone.trim().replace(/\D/g, "") : "";
     const password = req.body.password ? req.body.password.trim() : "";
 
-    console.log("📞 Normalized phone:", phone);
-    console.log("🔑 Password provided:", password ? "YES" : "NO");
-
-    // 2️⃣ Validate required fields
     if (!phone || !password) {
       return res.status(400).json({ message: "Phone and password are required" });
     }
 
-    // 3️⃣ Find user by phone
     const user = await User.findOne({ phone });
     if (!user) {
-      console.log("👤 Found user in DB: No user found");
       return res.status(401).json({ message: "Invalid phone or password" });
     }
 
-    console.log("👤 Found user in DB:", user.phone);
-
-    // 4️⃣ Compare passwords safely
     const isMatch = await bcrypt.compare(password, user.password || "");
-    console.log("🔑 Password match result:", isMatch);
-
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid phone or password" });
     }
 
-    // 5️⃣ Generate JWT
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    console.log("✅ Login successful for:", user.phone);
-
-    // 6️⃣ Send response
     res.json({
       message: "Login successful",
       token,
@@ -149,7 +129,6 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: "Server error during login" });
   }
 };
-
 
 
 
