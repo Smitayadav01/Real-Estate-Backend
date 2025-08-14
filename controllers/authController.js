@@ -11,10 +11,10 @@ const registerUser = async (req, res) => {
   try {
     const { name, phone, email, password } = req.body;
 
-    if (!name || !phone || !email || !password) {
+    if (!name || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields (name, phone, email, password) are required",
+        message: "All fields (name, phone,password) are required",
       });
     }
 
