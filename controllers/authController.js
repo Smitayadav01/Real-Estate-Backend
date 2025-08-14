@@ -87,48 +87,69 @@ const registerUser = async (req, res) => {
 
 
 // ✅ LOGIN USER (Phone only)
-const loginUser = async (req, res) => {
+import bcrypt from "bcryptjs";
+import User from "../models/User.js"; // adjust path if needed
+import jwt from "jsonwebtoken";
+
+export const loginUser = async (req, res) => {
   try {
-    let { phone, password } = req.body;
+    console.log("📥 Incoming login payload:", req.body);
 
-    // Normalize phone: remove spaces, plus signs, dashes
-    phone = phone.replace(/\D/g, '');
+    // 1️⃣ Extract and normalize inputs
+    const phone = req.body.phone ? req.body.phone.trim().replace(/\D/g, "") : "";
+    const password = req.body.password ? req.body.password.trim() : "";
 
+    console.log("📞 Normalized phone:", phone);
+    console.log("🔑 Password provided:", password ? "YES" : "NO");
+
+    // 2️⃣ Validate required fields
     if (!phone || !password) {
-      return res.status(400).json({ message: 'Phone and password are required' });
+      return res.status(400).json({ message: "Phone and password are required" });
     }
 
-    // Find user by normalized phone
+    // 3️⃣ Find user by phone
     const user = await User.findOne({ phone });
     if (!user) {
-      return res.status(400).json({ message: 'No account found with that phone number' });
+      console.log("👤 Found user in DB: No user found");
+      return res.status(401).json({ message: "Invalid phone or password" });
     }
 
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("👤 Found user in DB:", user.phone);
+
+    // 4️⃣ Compare passwords safely
+    const isMatch = await bcrypt.compare(password, user.password || "");
+    console.log("🔑 Password match result:", isMatch);
+
     if (!isMatch) {
-      return res.status(400).json({ message: 'Incorrect password' });
+      return res.status(401).json({ message: "Invalid phone or password" });
     }
 
-    // Create token
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // 5️⃣ Generate JWT
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
+    console.log("✅ Login successful for:", user.phone);
+
+    // 6️⃣ Send response
     res.json({
+      message: "Login successful",
+      token,
       user: {
-        _id: user._id,
+        id: user._id,
         name: user.name,
         phone: user.phone,
-        email: user.email,
-        role: user.role,
-        isActive: user.isActive,
-      },
-      token
+        role: user.role
+      }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    console.error("❌ Login error:", error);
+    res.status(500).json({ message: "Server error during login" });
   }
 };
+
 
 
 
