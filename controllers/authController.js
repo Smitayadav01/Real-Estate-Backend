@@ -87,61 +87,49 @@ const registerUser = async (req, res) => {
 
 
 // ✅ LOGIN USER (Phone only)
-const loginUser = async (req, res) => {
+export const loginUser = async (req, res) => {
   try {
     let { phone, password } = req.body;
 
-    console.log('📥 Incoming login payload:', { phone, password });
+    // Normalize phone: remove spaces, plus signs, dashes
+    phone = phone.replace(/\D/g, '');
 
-    // Validate request
     if (!phone || !password) {
       return res.status(400).json({ message: 'Phone and password are required' });
     }
 
-    // Normalize phone number: remove spaces, dashes, plus signs
-    phone = phone.replace(/\D/g, ''); // keep only digits
-    console.log('📞 Normalized phone:', phone);
-
-    // Lookup user by phone
-    const user = await User.findOne({ phone }).select('+password');
-    console.log('👤 Found user in DB:', user ? user.phone : 'No user found');
-
+    // Find user by normalized phone
+    const user = await User.findOne({ phone });
     if (!user) {
       return res.status(400).json({ message: 'No account found with that phone number' });
     }
 
-    // Compare password
+    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('🔑 Password match result:', isMatch);
-
     if (!isMatch) {
       return res.status(400).json({ message: 'Incorrect password' });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Remove password from user object before sending
-    const userResponse = user.toObject();
-    delete userResponse.password;
-
-    console.log('✅ Login successful for:', user.phone);
+    // Create token
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
-      message: 'Login successful',
-      token,
-      user: userResponse
+      user: {
+        _id: user._id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        role: user.role,
+        isActive: user.isActive,
+      },
+      token
     });
-
   } catch (error) {
-    console.error('❌ Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
+
 
 
 
