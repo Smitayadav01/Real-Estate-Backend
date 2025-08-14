@@ -41,14 +41,22 @@ const registerUser = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({
-      name,
-      phone,
-      password: hashedPassword,
-    });
-    if (email) user.email = email;
+    // Create user object
+    const userData = { name, phone, password: hashedPassword };
+    if (email) userData.email = email;
 
-    await user.save();
+    let user;
+    try {
+      user = new User(userData);
+      await user.save();
+    } catch (err) {
+      console.error('User save error:', err);
+      return res.status(500).json({
+        success: false,
+        message: 'Server error during registration',
+        error: err.message,
+      });
+    }
 
     const token = generateToken(user._id);
 
@@ -72,6 +80,7 @@ const registerUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error during registration",
+      error: error.message,
     });
   }
 };
