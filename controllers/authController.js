@@ -98,9 +98,12 @@ const loginUser = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ $or: [{ phone }, { email }] }).select(
-      "+password"
-    );
+    // Build query dynamically based on provided fields
+    const query = {};
+    if (phone) query.phone = phone;
+    if (email) query.email = email;
+
+    const user = await User.findOne(query).select("+password");
 
     if (!user) {
       return res.status(400).json({
