@@ -13,8 +13,9 @@ const userSchema = new mongoose.Schema({
   type: String,
   lowercase: true,
   trim: true,
-  default: null,  // ✅ will prevent empty string errors
-  sparse: true,
+  default: null,
+  unique: true,   // ✅ prevent duplicates when email exists
+  sparse: true,   // ✅ allow multiple nulls
   validate: {
     validator: function (value) {
       if (!value) return true;
@@ -23,6 +24,7 @@ const userSchema = new mongoose.Schema({
     message: 'Please enter a valid email'
   }
 },
+
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
