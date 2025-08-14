@@ -28,7 +28,7 @@ const registerUser = async (req, res) => {
     }
 
     // Check email only if provided
-    if (email) {
+    if (email && email.trim() !== "") {
       const existingEmail = await User.findOne({ email });
       if (existingEmail) {
         return res.status(400).json({
@@ -43,7 +43,7 @@ const registerUser = async (req, res) => {
 
     // Create user object
     const userData = { name, phone, password: hashedPassword };
-    if (email) userData.email = email;
+    if (email && email.trim() !== "") userData.email = email;
 
     let user;
     try {
