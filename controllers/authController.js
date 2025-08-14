@@ -87,66 +87,62 @@ const registerUser = async (req, res) => {
 
 
 // ✅ LOGIN USER (Phone only)
-const loginUser = async (req, res) => {
+exports.loginUser = async (req, res) => {
   try {
     let { phone, password } = req.body;
 
+    console.log('📥 Incoming login payload:', { phone, password });
+
+    // Validate request
     if (!phone || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Phone and password are required",
-      });
+      return res.status(400).json({ message: 'Phone and password are required' });
     }
 
-    // Normalize phone input
-    phone = phone.replace(/\s+/g, "");
+    // Normalize phone number: remove spaces, dashes, plus signs
+    phone = phone.replace(/\D/g, ''); // keep only digits
+    console.log('📞 Normalized phone:', phone);
 
-    // Find user by phone
-    const user = await User.findOne({ phone }).select("+password");
+    // Lookup user by phone
+    const user = await User.findOne({ phone }).select('+password');
+    console.log('👤 Found user in DB:', user ? user.phone : 'No user found');
 
     if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+      return res.status(400).json({ message: 'No account found with that phone number' });
     }
 
     // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('🔑 Password match result:', isMatch);
+
     if (!isMatch) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid credentials",
-      });
+      return res.status(400).json({ message: 'Incorrect password' });
     }
 
-    // Generate token
-    const token = generateToken(user._id);
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Remove password from user object before sending
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    console.log('✅ Login successful for:', user.phone);
 
     res.json({
-      success: true,
-      message: "Login successful",
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          phone: user.phone,
-          email: user.email,
-          role: user.role,
-          createdAt: user.createdAt,
-        },
-        token,
-      },
+      message: 'Login successful',
+      token,
+      user: userResponse
     });
+
   } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error during login",
-      error: error.message,
-    });
+    console.error('❌ Login error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 
 // ✅ GET LOGGED-IN USER
