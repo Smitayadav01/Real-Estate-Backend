@@ -13,7 +13,7 @@ const validate = (req, res, next) => {
   next();
 };
 
-// User Registration (email is optional)
+// User Registration (email optional, phone required)
 const validateUserRegistration = [
   body('name')
     .trim()
@@ -37,19 +37,13 @@ const validateUserRegistration = [
   validate
 ];
 
-// User Login (phone required, email optional)
+// User Login (phone required, no email check)
 const validateUserLogin = [
   body('phone')
     .notEmpty()
     .withMessage('Phone number is required')
     .matches(/^[\+]?[1-9][\d]{0,15}$/)
     .withMessage('Invalid phone number'),
-
-  body('email')
-    .optional({ checkFalsy: true })
-    .isEmail()
-    .withMessage('Invalid email')
-    .normalizeEmail(),
 
   body('password')
     .notEmpty()

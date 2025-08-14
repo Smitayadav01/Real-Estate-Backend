@@ -36,17 +36,21 @@ router.post(
       .trim()
       .isLength({ min: 2 })
       .withMessage("Name is required and must be at least 2 characters"),
+
     body("phone")
       .matches(/^[\+]?[1-9][\d]{0,15}$/)
       .withMessage("Please provide a valid phone number"),
+
     body("password")
       .isLength({ min: 6 })
       .withMessage("Password must be at least 6 characters long"),
+
     body("email")
       .optional({ checkFalsy: true })
       .isEmail()
       .withMessage("Please provide a valid email")
       .normalizeEmail(),
+
     validate,
   ],
   registerUser
@@ -54,22 +58,22 @@ router.post(
 
 /**
  * @route POST /api/auth/login
- * @desc Login user with phone or email
+ * @desc Login user with phone only
  * @access Public
  */
 router.post(
   "/login",
   [
     body("phone")
-      .optional({ checkFalsy: true })
+      .notEmpty()
+      .withMessage("Phone number is required")
       .matches(/^[\+]?[1-9][\d]{0,15}$/)
       .withMessage("Invalid phone number"),
-    body("email")
-      .optional({ checkFalsy: true })
-      .isEmail()
-      .withMessage("Invalid email")
-      .normalizeEmail(),
-    body("password").notEmpty().withMessage("Password is required"),
+
+    body("password")
+      .notEmpty()
+      .withMessage("Password is required"),
+
     validate,
   ],
   loginUser

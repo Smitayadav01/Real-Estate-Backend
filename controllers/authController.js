@@ -86,28 +86,23 @@ const registerUser = async (req, res) => {
 };
 
 
-// ✅ LOGIN USER
+// ✅ LOGIN USER (Phone only)
 const loginUser = async (req, res) => {
   try {
-    let { phone, email, password } = req.body;
+    let { phone, password } = req.body;
 
-    if ((!phone && !email) || !password) {
+    if (!phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "Phone/email and password are required",
+        message: "Phone and password are required",
       });
     }
 
-    // Normalize input
-    if (phone) phone = phone.replace(/\s+/g, '');
-    if (email) email = email.trim().toLowerCase();
+    // Normalize phone input
+    phone = phone.replace(/\s+/g, "");
 
-    // Build query dynamically
-    const query = {};
-    if (phone) query.phone = phone;
-    if (email) query.email = email;
-
-    const user = await User.findOne(query).select("+password");
+    // Find user by phone
+    const user = await User.findOne({ phone }).select("+password");
 
     if (!user) {
       return res.status(400).json({
@@ -116,6 +111,7 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Compare password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({
@@ -124,6 +120,7 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Generate token
     const token = generateToken(user._id);
 
     res.json({
@@ -150,6 +147,7 @@ const loginUser = async (req, res) => {
     });
   }
 };
+
 
 // ✅ GET LOGGED-IN USER
 const getMe = async (req, res) => {
