@@ -48,7 +48,7 @@ const propertySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Description is required'],
     trim: true,
-    minlength: [20, 'Description must be at least 20 characters long'],
+    minlength: [5, 'Description must be at least 20 characters long'],
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
   status: {
