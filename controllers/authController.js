@@ -87,7 +87,7 @@ const registerUser = async (req, res) => {
 
 
 // ✅ LOGIN USER (Phone only)
-exports.loginUser = async (req, res) => {
+const loginUser = async (req, res) => {
   try {
     let { phone, password } = req.body;
 
