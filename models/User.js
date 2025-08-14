@@ -10,16 +10,19 @@ const userSchema = new mongoose.Schema({
     maxlength: [50, 'Name cannot exceed 50 characters']
   },
   email: {
-    type: String,
-    lowercase: true,
-    trim: true,
-    unique: false, // We'll handle unique manually
-    sparse: true,  // Allow null/undefined without unique conflicts
-    match: [
-      /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-      'Please enter a valid email'
-    ]
-  },
+  type: String,
+  lowercase: true,
+  trim: true,
+  default: null,  // ✅ will prevent empty string errors
+  sparse: true,
+  validate: {
+    validator: function (value) {
+      if (!value) return true;
+      return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value);
+    },
+    message: 'Please enter a valid email'
+  }
+},
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
