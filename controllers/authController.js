@@ -14,23 +14,28 @@ const registerUser = async (req, res) => {
     if (!name || !phone || !password) {
       return res.status(400).json({
         success: false,
-        message: "All fields (name, phone,password) are required",
+        message: "Name, phone, and password are required",
       });
     }
 
-    // Check if phone/email already exists
-    const existingUser = await User.findOne({
-      $or: [{ phone }, { email }],
-    });
-
-    if (existingUser) {
+    // Check phone
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
       return res.status(400).json({
         success: false,
-        message:
-          existingUser.phone === phone
-            ? "User with this phone number already exists"
-            : "User with this email already exists",
+        message: "User with this phone number already exists",
       });
+    }
+
+    // Check email only if provided
+    if (email) {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "User with this email already exists",
+        });
+      }
     }
 
     // Hash password
@@ -39,9 +44,9 @@ const registerUser = async (req, res) => {
     const user = new User({
       name,
       phone,
-      email,
       password: hashedPassword,
     });
+    if (email) user.email = email;
 
     await user.save();
 
@@ -70,6 +75,7 @@ const registerUser = async (req, res) => {
     });
   }
 };
+
 
 // ✅ LOGIN USER
 const loginUser = async (req, res) => {
