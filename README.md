@@ -1,57 +1,86 @@
-# Vasai Properties Backend API
+# Vasai Properties Backend
 
-A comprehensive backend API for the Vasai Properties real estate platform built with Node.js, Express.js, and MongoDB.
+A comprehensive Node.js/Express backend for the Vasai Properties real estate platform with email notifications using Nodemailer.
 
 ## 🚀 Features
 
-- **User Authentication**: JWT-based authentication with registration and login
-- **Property Management**: CRUD operations for property listings
-- **Inquiry System**: Handle property inquiries and notifications
-- **Email Notifications**: Automated email notifications for property submissions and inquiries
-- **Wishlist**: Users can save favorite properties
-- **Search & Filter**: Advanced property search with multiple filters
-- **Security**: Rate limiting, CORS, input validation, and security headers
-- **Database**: MongoDB with Mongoose ODM
+- **User Authentication** - JWT-based secure authentication
+- **Property Management** - CRUD operations for property listings
+- **Email Notifications** - Automated emails for all user actions
+- **Wishlist System** - Save and manage favorite properties
+- **Inquiry System** - Direct communication between users and property owners
+- **Image Upload** - Base64 image storage support
+- **Search & Filter** - Advanced property search capabilities
+- **Auto-Approval** - Properties appear immediately on website
 
-## 📋 Prerequisites
+## 📧 Email Notifications
 
-- Node.js (v14 or higher)
-- MongoDB (local or MongoDB Atlas)
-- Gmail account for email notifications
+The system sends beautiful HTML emails for:
+
+1. **Welcome Email** - When users register
+2. **Property Listed Email** - When property owners list a property
+3. **Admin Notification** - When new properties are listed
+4. **Inquiry Email** - When someone inquires about a property
 
 ## 🛠️ Installation
 
-1. **Clone and navigate to backend directory**
+### Prerequisites
+- Node.js (v14 or higher)
+- MongoDB
+- Gmail account with App Password
+
+### Setup Steps
+
+1. **Install Dependencies**
    ```bash
    cd backend
    npm install
    ```
 
-2. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Configure Environment Variables**
-   Edit `.env` file with your configurations:
+2. **Environment Configuration**
+   
+   Update `.env` file with your settings:
    ```env
+   # Server
+   PORT=5000
+   NODE_ENV=development
+   
    # Database
    MONGODB_URI=mongodb://localhost:27017/vasai-properties
    
-   # JWT Secret (generate a strong secret)
-   JWT_SECRET=your-super-secret-jwt-key-here
+   # JWT
+   JWT_SECRET=your-super-secret-jwt-key
    
-   # Email Configuration
+   # Email (Gmail)
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
    EMAIL_USER=your-email@gmail.com
-   EMAIL_PASS=your-app-password
+   EMAIL_PASS=your-gmail-app-password
+   EMAIL_FROM=Vasai Properties <your-email@gmail.com>
    
-   # Server Configuration
-   PORT=5000
-   NODE_ENV=development
+   # Admin
+   ADMIN_EMAIL=admin@vasaiproperties.com
+   
+   # Frontend
    FRONTEND_URL=http://localhost:5173
+   SITE_URL=http://localhost:5173
    ```
 
-4. **Start the Server**
+3. **Gmail Setup**
+   - Enable 2-Factor Authentication on Gmail
+   - Generate App Password: https://support.google.com/accounts/answer/185833
+   - Use App Password in `EMAIL_PASS` environment variable
+
+4. **Start MongoDB**
+   ```bash
+   # Using MongoDB service
+   sudo systemctl start mongod
+   
+   # Or using Docker
+   docker run -d -p 27017:27017 --name mongodb mongo
+   ```
+
+5. **Start the Server**
    ```bash
    # Development mode
    npm run dev
@@ -60,196 +89,125 @@ A comprehensive backend API for the Vasai Properties real estate platform built 
    npm start
    ```
 
-## 📧 Email Setup
+## 📱 API Endpoints
 
-1. **Enable 2-Factor Authentication** on your Gmail account
-2. **Generate App Password**:
-   - Go to Google Account settings
-   - Security → 2-Step Verification → App passwords
-   - Generate password for "Mail"
-3. **Use the app password** in `EMAIL_PASS` environment variable
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+- `GET /api/auth/me` - Get current user profile
+- `PUT /api/auth/profile` - Update user profile
 
-## 🗄️ Database Schema
+### Properties
+- `GET /api/properties` - Get all properties (with filters)
+- `GET /api/properties/:id` - Get single property
+- `POST /api/properties` - Create new property (auth required)
+- `PUT /api/properties/:id` - Update property (owner only)
+- `DELETE /api/properties/:id` - Delete property (owner only)
+- `GET /api/properties/user/my-properties` - Get user's properties
 
-### User Schema
-```javascript
-{
-  name: String (required, 2-50 chars),
-  email: String (required, unique, valid email),
-  phone: String (required, valid phone),
-  password: String (required, min 6 chars, hashed),
-  role: String (enum: ['user', 'admin'], default: 'user'),
-  isActive: Boolean (default: true),
-  wishlist: [ObjectId] (references Property),
-  profileImage: String,
-  timestamps: true
-}
-```
+### Wishlist
+- `GET /api/wishlist` - Get user's wishlist
+- `POST /api/wishlist/:id` - Add/remove property from wishlist
 
-### Property Schema
-```javascript
-{
-  title: String (required, 5-100 chars),
-  type: String (enum: ['apartment', 'house', 'villa', 'commercial']),
-  bhk: String (enum: ['1', '2', '3', '4', '5']),
-  bathrooms: Number (1-10),
-  area: Number (100-50000 sq ft),
-  price: Number (1000-1000000000),
-  location: String (required, 5-100 chars),
-  description: String (required, 20-1000 chars),
-  status: String (enum: ['sale', 'rent']),
-  images: [String],
-  amenities: [String],
-  features: [String],
-  nearbyPlaces: [String],
-  owner: ObjectId (references User),
-  ownerName: String (required),
-  ownerPhone: String (required),
-  ownerEmail: String (required),
-  isApproved: Boolean (default: false),
-  isActive: Boolean (default: true),
-  views: Number (default: 0),
-  rating: Number (1-5, default: 4.8),
-  coordinates: { latitude: Number, longitude: Number },
-  timestamps: true
-}
-```
+### Inquiries
+- `POST /api/inquiries/property/:id` - Send inquiry for property
+- `GET /api/inquiries/property/:id` - Get property inquiries (owner only)
+- `GET /api/inquiries/my-inquiries` - Get user's sent inquiries
+- `PUT /api/inquiries/:id/respond` - Respond to inquiry (owner only)
 
-### Inquiry Schema
-```javascript
-{
-  property: ObjectId (references Property),
-  inquirer: {
-    name: String (required),
-    email: String (required),
-    phone: String (required)
-  },
-  message: String (required, 10-1000 chars),
-  status: String (enum: ['pending', 'responded', 'closed']),
-  response: String,
-  respondedAt: Date,
-  timestamps: true
-}
-```
+### Health Check
+- `GET /api/health` - Server health status
 
-## 🔗 API Endpoints
+## 🔧 Configuration
 
-### Authentication Routes (`/api/auth`)
-- `POST /register` - Register new user
-- `POST /login` - User login
-- `GET /me` - Get current user profile
-- `PUT /profile` - Update user profile
+### Email Templates
+All email templates are responsive HTML with:
+- Professional design
+- Company branding
+- Property details
+- Contact information
+- Call-to-action buttons
 
-### Property Routes (`/api/properties`)
-- `GET /` - Get all approved properties (with filters)
-- `GET /:id` - Get single property by ID
-- `POST /` - Create new property (auth required)
-- `PUT /:id` - Update property (owner only)
-- `DELETE /:id` - Delete property (owner only)
-- `GET /user/my-properties` - Get user's properties
-- `POST /:id/wishlist` - Add/remove from wishlist
-- `GET /user/wishlist` - Get user's wishlist
+### Security Features
+- Helmet for security headers
+- CORS configuration
+- Rate limiting
+- Input validation
+- JWT authentication
+- Password hashing with bcrypt
 
-### Inquiry Routes (`/api/inquiries`)
-- `POST /:propertyId` - Send inquiry for property
-- `GET /property/:propertyId` - Get property inquiries (owner only)
-- `GET /my-inquiries` - Get all inquiries for user's properties
-- `PUT /:id/respond` - Respond to inquiry (owner only)
+### Database Models
+- **User** - User accounts with authentication
+- **Property** - Property listings with all details
+- **Inquiry** - Communication between users and owners
 
-### Utility Routes
-- `GET /api/health` - Health check
-- `GET /` - API welcome message
+## 🎯 Key Features
 
-## 🔍 Query Parameters
+### Auto-Approval System
+- Properties are automatically approved (`isApproved: true`)
+- Immediate visibility on website
+- No manual approval required
 
-### Property Search (`GET /api/properties`)
-```
-?page=1&limit=12&location=vasai&type=apartment&bhk=2&status=sale&minPrice=1000000&maxPrice=5000000&search=modern&sortBy=price&sortOrder=asc
-```
+### Email Notifications
+- Welcome emails for new users
+- Property listing confirmations
+- Admin notifications for new listings
+- Inquiry notifications to property owners
 
-## 🛡️ Security Features
+### Image Support
+- Base64 image storage
+- Default fallback images
+- Multiple image support
 
-- **JWT Authentication**: Secure token-based authentication
-- **Password Hashing**: bcryptjs with salt rounds
-- **Rate Limiting**: 100 requests per 15 minutes per IP
-- **Input Validation**: express-validator for all inputs
-- **CORS**: Configured for frontend domain
-- **Helmet**: Security headers
-- **MongoDB Injection Protection**: Mongoose sanitization
+### Search & Filter
+- Text search across title, location, description
+- Filter by type, BHK, price range, status
+- Sorting options
+- Pagination support
 
-## 📧 Email Templates
+## 🚀 Production Deployment
 
-The API sends beautiful HTML email templates for:
-- **Property Submission**: Notification to admin and confirmation to owner
-- **Property Inquiries**: Notification to property owner
-- **Responsive Design**: Mobile-friendly email templates
+1. **Environment Variables**
+   - Set `NODE_ENV=production`
+   - Use production MongoDB URI
+   - Set secure JWT secret
+   - Configure production email settings
 
-## 🚀 Deployment
+2. **Process Management**
+   ```bash
+   # Using PM2
+   npm install -g pm2
+   pm2 start server.js --name "vasai-properties-api"
+   ```
 
-### Environment Variables for Production
-```env
-NODE_ENV=production
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/vasai-properties
-JWT_SECRET=your-production-jwt-secret
-EMAIL_USER=your-production-email@gmail.com
-EMAIL_PASS=your-production-app-password
-FRONTEND_URL=https://your-frontend-domain.com
-```
-
-### MongoDB Atlas Setup
-1. Create MongoDB Atlas account
-2. Create new cluster
-3. Create database user
-4. Whitelist IP addresses
-5. Get connection string
-
-## 🧪 Testing
-
-```bash
-# Test API health
-curl http://localhost:5000/api/health
-
-# Test user registration
-curl -X POST http://localhost:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test User","email":"test@example.com","phone":"1234567890","password":"password123"}'
-```
-
-## 📝 Error Handling
-
-The API includes comprehensive error handling:
-- **Validation Errors**: Detailed field-level validation messages
-- **Authentication Errors**: Clear JWT and permission messages
-- **Database Errors**: Mongoose validation and duplicate key handling
-- **Global Error Handler**: Catches and formats all errors
-
-## 🔧 Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server with auto-reload
-npm run dev
-
-# Start production server
-npm start
-```
+3. **Reverse Proxy**
+   Configure Nginx or Apache to proxy requests to the Node.js server
 
 ## 📊 Monitoring
 
-- **Health Check**: `/api/health` endpoint for monitoring
-- **Error Logging**: Console logging for all errors
-- **Request Logging**: Basic request information
+The server logs all important events:
+- ✅ Successful operations
+- ❌ Error conditions
+- 📧 Email sending status
+- 🔐 Authentication attempts
 
-## 🤝 Contributing
+## 🛡️ Security
 
-1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+- JWT tokens with 7-day expiration
+- Password hashing with bcrypt (12 rounds)
+- Input validation and sanitization
+- Rate limiting (100 requests per 15 minutes)
+- CORS protection
+- Helmet security headers
 
-## 📄 License
+## 🤝 Support
 
-This project is licensed under the MIT License.
+For technical support or questions:
+- Check server logs for error details
+- Verify environment variables
+- Ensure MongoDB connection
+- Test email configuration
+
+---
+
+**Vasai Properties Backend** - Powering your real estate platform! 🏠✨

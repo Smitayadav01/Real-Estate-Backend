@@ -1,96 +1,199 @@
-const express = require("express");
-const { body, validationResult } = require("express-validator");
-
-const { auth } = require("../middleware/auth");
-const {
-  registerUser,
-  loginUser,
-  getMe,
-  updateProfile,
-} = require("../controllers/authController");
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const { auth } = require('../middleware/auth');
+const { validateUserRegistration, validateUserLogin } = require('../middleware/validation');
+const { sendWelcomeEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
-// Shared validation handler
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
+// @route   POST /api/auth/register
+// @desc    Register a new user
+// @access  Public
+router.post('/register', validateUserRegistration, async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists with this email address'
+      });
+    }
+
+    // Create new user
+    const user = new User({
+      name,
+      email,
+      phone,
+      password
+    });
+
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Send welcome email (don't fail registration if email fails)
+    try {
+      await sendWelcomeEmail(email, name);
+    } catch (emailError) {
+      console.error('Welcome email error:', emailError);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful! Welcome to Vasai Properties.',
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          createdAt: user.createdAt
+        },
+        token
+      }
+    });
+
+  } catch (error) {
+    console.error('Registration error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is already registered'
+      });
+    }
+    
+    res.status(500).json({
       success: false,
-      message: "Validation failed",
-      errors: errors.array(),
+      message: 'Server error during registration'
     });
   }
-  next();
-};
+});
 
-/**
- * @route POST /api/auth/register
- * @desc Register a new user
- * @access Public
- */
-router.post(
-  "/register",
-  [
-    body("name")
-      .trim()
-      .isLength({ min: 2 })
-      .withMessage("Name is required and must be at least 2 characters"),
+// @route   POST /api/auth/login
+// @desc    Login user
+// @access  Public
+router.post('/login', validateUserLogin, async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-    body("phone")
-      .matches(/^[\+]?[1-9][\d]{0,15}$/)
-      .withMessage("Please provide a valid phone number"),
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
 
-    body("password")
-      .isLength({ min: 6 })
-      .withMessage("Password must be at least 6 characters long"),
+    // Check if account is active
+    if (!user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account is deactivated. Please contact support.'
+      });
+    }
 
-    body("email")
-      .optional({ checkFalsy: true })
-      .isEmail()
-      .withMessage("Please provide a valid email")
-      .normalizeEmail(),
+    // Verify password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
 
-    validate,
-  ],
-  registerUser
-);
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
 
-/**
- * @route POST /api/auth/login
- * @desc Login user with phone only
- * @access Public
- */
-router.post(
-  "/login",
-  [
-    body("phone")
-      .notEmpty()
-      .withMessage("Phone number is required")
-      .matches(/^[\+]?[1-9][\d]{0,15}$/)
-      .withMessage("Invalid phone number"),
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    body("password")
-      .notEmpty()
-      .withMessage("Password is required"),
+    res.json({
+      success: true,
+      message: 'Login successful! Welcome back.',
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin
+        },
+        token
+      }
+    });
 
-    validate,
-  ],
-  loginUser
-);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during login'
+    });
+  }
+});
 
-/**
- * @route GET /api/auth/me
- * @desc Get logged-in user
- * @access Private
- */
-router.get("/me", auth, getMe);
+// @route   GET /api/auth/me
+// @desc    Get current user profile
+// @access  Private
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    
+    res.json({
+      success: true,
+      data: { user }
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching profile'
+    });
+  }
+});
 
-/**
- * @route PUT /api/auth/profile
- * @desc Update logged-in user's profile
- * @access Private
- */
-router.put("/profile", auth, updateProfile);
+// @route   PUT /api/auth/profile
+// @desc    Update user profile
+// @access  Private
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: { user }
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while updating profile'
+    });
+  }
+});
 
 module.exports = router;

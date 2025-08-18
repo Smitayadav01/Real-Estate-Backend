@@ -5,7 +5,7 @@ const propertySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Property title is required'],
     trim: true,
-    minlength: [5, 'Title must be at least 5 characters long'],
+    minlength: [5, 'Title must be at least 5 characters'],
     maxlength: [100, 'Title cannot exceed 100 characters']
   },
   type: {
@@ -41,26 +41,49 @@ const propertySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Location is required'],
     trim: true,
-    minlength: [5, 'Location must be at least 5 characters long'],
+    minlength: [5, 'Location must be at least 5 characters'],
     maxlength: [100, 'Location cannot exceed 100 characters']
   },
   description: {
     type: String,
     required: [true, 'Description is required'],
     trim: true,
-    minlength: [5, 'Description must be at least 20 characters long'],
+    minlength: [20, 'Description must be at least 20 characters'],
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
+  image: {
+    type: String,
+    default: 'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=800'
+  },
+  images: [{
+    type: String
+  }],
   status: {
     type: String,
     required: [true, 'Property status is required'],
     enum: ['sale', 'rent'],
     lowercase: true
   },
-  images: [{
+  ownerName: {
     type: String,
-    default: 'https://images.pexels.com/photos/106399/pexels-photo-106399.jpeg?auto=compress&cs=tinysrgb&w=800'
-  }],
+    required: [true, 'Owner name is required'],
+    trim: true,
+    minlength: [2, 'Owner name must be at least 2 characters'],
+    maxlength: [50, 'Owner name cannot exceed 50 characters']
+  },
+  ownerPhone: {
+    type: String,
+    required: [true, 'Owner phone is required'],
+    trim: true,
+    match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
+  },
+  ownerEmail: {
+    type: String,
+    required: [true, 'Owner email is required'],
+    lowercase: true,
+    trim: true,
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+  },
   amenities: [{
     type: String,
     trim: true
@@ -78,27 +101,9 @@ const propertySchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  ownerName: {
-    type: String,
-    required: [true, 'Owner name is required'],
-    trim: true
-  },
-  ownerPhone: {
-    type: String,
-    required: [true, 'Owner phone is required'],
-    trim: true,
-    match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
-  },
-  ownerEmail: {
-    type: String,
-    required: [true, 'Owner email is required'],
-    lowercase: true,
-    trim: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
-  },
   isApproved: {
     type: Boolean,
-    default: false
+    default: true // Auto-approve for immediate visibility
   },
   isActive: {
     type: Boolean,
@@ -113,45 +118,23 @@ const propertySchema = new mongoose.Schema({
     default: 4.8,
     min: 1,
     max: 5
-  },
-  coordinates: {
-    latitude: {
-      type: Number,
-      default: 19.4617
-    },
-    longitude: {
-      type: Number,
-      default: 72.7869
-    }
   }
 }, {
   timestamps: true
 });
 
-// Index for search functionality
-propertySchema.index({ 
-  title: 'text', 
-  location: 'text', 
-  description: 'text' 
+// Create text index for search functionality
+propertySchema.index({
+  title: 'text',
+  location: 'text',
+  description: 'text'
 });
 
-propertySchema.index({ location: 1, type: 1, status: 1 });
+// Add indexes for better query performance
+propertySchema.index({ type: 1, status: 1, isApproved: 1, isActive: 1 });
 propertySchema.index({ price: 1 });
-propertySchema.index({ bhk: 1 });
-propertySchema.index({ isApproved: 1, isActive: 1 });
-
-// Virtual for formatted price
-propertySchema.virtual('formattedPrice').get(function() {
-  if (this.price >= 10000000) {
-    return `₹${(this.price / 10000000).toFixed(1)} Cr`;
-  } else if (this.price >= 100000) {
-    return `₹${(this.price / 100000).toFixed(1)} L`;
-  } else {
-    return `₹${this.price.toLocaleString()}`;
-  }
-});
-
-// Ensure virtual fields are serialized
-propertySchema.set('toJSON', { virtuals: true });
+propertySchema.index({ location: 1 });
+propertySchema.index({ owner: 1 });
+propertySchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Property', propertySchema);

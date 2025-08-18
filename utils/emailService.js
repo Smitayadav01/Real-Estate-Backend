@@ -1,241 +1,357 @@
 const nodemailer = require('nodemailer');
 
-// Create email transporter
+// Create transporter
 const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
+  return nodemailer.createTransporter({
+    host: process.env.EMAIL_HOST,
+    port: process.env.EMAIL_PORT,
+    secure: false, // true for 465, false for other ports
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
     }
   });
 };
 
-// Send property notification email
-const sendPropertyNotificationEmail = async ({ propertyData, ownerEmail, ownerName }) => {
+// Send welcome email to new users
+const sendWelcomeEmail = async (userEmail, userName) => {
   try {
     const transporter = createTransporter();
-
+    
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: [ 'admin@vasaiproperties.com', ownerEmail ],
-      subject: 'New Property Listing Submitted - Vasai Properties',
+      from: process.env.EMAIL_FROM,
+      to: userEmail,
+      subject: `Welcome to ${process.env.SITE_NAME}! 🏠`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb;">
-          <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="margin: 0; font-size: 28px;">🏠 New Property Submission</h1>
-            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">A new property has been submitted for listing on Vasai Properties</p>
-          </div>
-          
-          <div style="padding: 30px; background: white; margin: 0;">
-            <h2 style="color: #16a34a; margin-bottom: 20px; border-bottom: 2px solid #16a34a; padding-bottom: 10px;">Property Details</h2>
-            
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Title:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${propertyData.title}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Type:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937; text-transform: capitalize;">${propertyData.type}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">BHK:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${propertyData.bhk} BHK</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Bathrooms:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${propertyData.bathrooms}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Area:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${propertyData.area} sq ft</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Price:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #16a34a; font-weight: bold; font-size: 18px;">₹${propertyData.price.toLocaleString()}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Location:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${propertyData.location}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Status:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937; text-transform: capitalize;">For ${propertyData.status}</td>
-              </tr>
-            </table>
-            
-            <h3 style="color: #16a34a; margin-top: 25px; margin-bottom: 15px;">Description</h3>
-            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #16a34a; margin-bottom: 25px;">
-              <p style="margin: 0; color: #374151; line-height: 1.6;">${propertyData.description}</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Welcome to ${process.env.SITE_NAME}</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #16a34a, #22c55e); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .button { display: inline-block; background: #16a34a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            .feature { background: white; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #16a34a; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🏠 Welcome to ${process.env.SITE_NAME}!</h1>
+              <p>Your trusted partner in real estate</p>
             </div>
-            
-            <h3 style="color: #16a34a; margin-bottom: 15px;">Owner Information</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Name:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${ownerName}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Email:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${ownerEmail}</td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Phone:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${propertyData.ownerPhone}</td>
-              </tr>
-            </table>
-          </div>
-          
-          <div style="background: #16a34a; color: white; padding: 25px; text-align: center; border-radius: 0 0 10px 10px;">
-            <h3 style="margin: 0 0 10px 0;">Next Steps</h3>
-            <p style="margin: 0; font-size: 14px; opacity: 0.9;">Please review this property listing and approve it to make it live on the website.</p>
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
-              <p style="margin: 0; font-size: 14px; font-weight: bold;">Vasai Properties Team</p>
-              <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">Making property dreams come true</p>
+            <div class="content">
+              <h2>Hello ${userName}!</h2>
+              <p>Thank you for joining ${process.env.SITE_NAME}! We're excited to help you find your dream property in the beautiful Vasai-Virar region.</p>
+              
+              <h3>What you can do now:</h3>
+              <div class="feature">
+                <strong>🔍 Browse Properties</strong><br>
+                Explore thousands of verified properties in Vasai-Virar
+              </div>
+              <div class="feature">
+                <strong>❤️ Save to Wishlist</strong><br>
+                Keep track of properties you love
+              </div>
+              <div class="feature">
+                <strong>📝 List Your Property</strong><br>
+                List your property for FREE and reach genuine buyers
+              </div>
+              <div class="feature">
+                <strong>💬 Direct Contact</strong><br>
+                Connect directly with property owners
+              </div>
+              
+              <p>Ready to start your property journey?</p>
+              <a href="${process.env.SITE_URL}" class="button">Explore Properties</a>
+              
+              <p>If you have any questions, our team is here to help!</p>
+              <p><strong>Contact us:</strong><br>
+              📞 +91 9876543210<br>
+              📧 info@vasaiproperties.com</p>
+            </div>
+            <div class="footer">
+              <p>© 2024 ${process.env.SITE_NAME}. All rights reserved.</p>
+              <p>Vasai-Virar, Palghar, Maharashtra</p>
             </div>
           </div>
-        </div>
+        </body>
+        </html>
       `
     };
 
     await transporter.sendMail(mailOptions);
-
-    // Send confirmation email to property owner
-    const ownerConfirmation = {
-      from: process.env.EMAIL_USER,
-      to: ownerEmail,
-      subject: 'Property Listing Submitted Successfully - Vasai Properties',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb;">
-          <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="margin: 0; font-size: 28px;">🎉 Property Submitted Successfully!</h1>
-            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Thank you for choosing Vasai Properties</p>
-          </div>
-          
-          <div style="padding: 30px; background: white;">
-            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">Dear ${ownerName},</p>
-            
-            <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
-              Your property "<strong>${propertyData.title}</strong>" has been successfully submitted to Vasai Properties. 
-              Our team will review your listing and it will be live on our website soon.
-            </p>
-            
-            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #16a34a; margin: 20px 0;">
-              <h3 style="color: #16a34a; margin: 0 0 10px 0;">What happens next?</h3>
-              <ul style="color: #374151; margin: 0; padding-left: 20px;">
-                <li>Our team will verify your property details</li>
-                <li>Your listing will be live within 24 hours</li>
-                <li>Interested buyers/tenants will contact you directly</li>
-                <li>We'll send you updates about inquiries</li>
-              </ul>
-            </div>
-            
-            <p style="color: #374151; line-height: 1.6;">
-              If you have any questions or need to make changes to your listing, please contact us at 
-              <a href="tel:+919876543210" style="color: #16a34a; text-decoration: none;">+91 9876543210</a> or 
-              <a href="mailto:info@vasaiproperties.com" style="color: #16a34a; text-decoration: none;">info@vasaiproperties.com</a>
-            </p>
-          </div>
-          
-          <div style="background: #16a34a; color: white; padding: 25px; text-align: center; border-radius: 0 0 10px 10px;">
-            <p style="margin: 0; font-size: 14px; font-weight: bold;">Vasai Properties Team</p>
-            <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">Your trusted real estate partner</p>
-          </div>
-        </div>
-      `
-    };
-
-    await transporter.sendMail(ownerConfirmation);
-
-    return { success: true, message: 'Property notification emails sent successfully' };
-
+    console.log(`✅ Welcome email sent to ${userEmail}`);
+    return { success: true };
   } catch (error) {
-    console.error('Email service error:', error);
-    throw error;
+    console.error('❌ Error sending welcome email:', error);
+    return { success: false, error: error.message };
   }
 };
 
-// Send inquiry email
-const sendInquiryEmail = async ({ propertyTitle, inquirerData, ownerEmail, ownerName }) => {
+// Send property listing confirmation to owner
+const sendPropertyListedEmail = async (propertyData, ownerEmail, ownerName) => {
   try {
     const transporter = createTransporter();
-
+    
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: process.env.EMAIL_FROM,
       to: ownerEmail,
-      subject: `New Inquiry for "${propertyTitle}" - Vasai Properties`,
+      subject: `🎉 Your Property is Now Live on ${process.env.SITE_NAME}!`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9fafb;">
-          <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="margin: 0; font-size: 28px;">💬 New Property Inquiry</h1>
-            <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Someone is interested in your property!</p>
-          </div>
-          
-          <div style="padding: 30px; background: white;">
-            <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">Dear ${ownerName},</p>
-            
-            <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
-              You have received a new inquiry for your property "<strong>${propertyTitle}</strong>" through Vasai Properties.
-            </p>
-            
-            <h3 style="color: #2563eb; margin-bottom: 15px; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">Inquirer Details</h3>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Name:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">${inquirerData.name}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Email:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">
-                  <a href="mailto:${inquirerData.email}" style="color: #2563eb; text-decoration: none;">${inquirerData.email}</a>
-                </td>
-              </tr>
-              <tr style="background: #f8fafc;">
-                <td style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold; color: #374151;">Phone:</td>
-                <td style="padding: 12px; border: 1px solid #e2e8f0; color: #1f2937;">
-                  <a href="tel:${inquirerData.phone}" style="color: #2563eb; text-decoration: none;">${inquirerData.phone}</a>
-                </td>
-              </tr>
-            </table>
-            
-            <h3 style="color: #2563eb; margin-bottom: 15px;">Message</h3>
-            <div style="background: #eff6ff; padding: 20px; border-radius: 8px; border-left: 4px solid #2563eb; margin-bottom: 25px;">
-              <p style="margin: 0; color: #374151; line-height: 1.6;">${inquirerData.message}</p>
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Property Listed Successfully</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #16a34a, #22c55e); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .property-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #16a34a; }
+            .button { display: inline-block; background: #16a34a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .success-icon { font-size: 48px; text-align: center; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+            .tip { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 15px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎉 Property Listed Successfully!</h1>
+              <p>Your property is now live on ${process.env.SITE_NAME}</p>
             </div>
-            
-            <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #16a34a;">
-              <h4 style="color: #16a34a; margin: 0 0 10px 0;">Recommended Next Steps:</h4>
-              <ul style="color: #374151; margin: 0; padding-left: 20px;">
-                <li>Contact the inquirer directly via phone or email</li>
-                <li>Schedule a property viewing if they're interested</li>
-                <li>Provide additional details they might need</li>
-                <li>Keep us updated on the progress</li>
+            <div class="content">
+              <div class="success-icon">✅</div>
+              
+              <h2>Congratulations ${ownerName}!</h2>
+              <p>Your property has been successfully listed on our platform and is now visible to thousands of potential buyers and tenants.</p>
+              
+              <div class="property-card">
+                <h3>📋 Property Details:</h3>
+                <p><strong>Title:</strong> ${propertyData.title}</p>
+                <p><strong>Location:</strong> ${propertyData.location}</p>
+                <p><strong>Type:</strong> ${propertyData.type.charAt(0).toUpperCase() + propertyData.type.slice(1)}</p>
+                <p><strong>BHK:</strong> ${propertyData.bhk}</p>
+                <p><strong>Price:</strong> ₹${propertyData.price.toLocaleString()}</p>
+                <p><strong>Status:</strong> <span style="color: #16a34a; font-weight: bold;">✅ LIVE</span></p>
+              </div>
+              
+              <h3>🚀 What happens next?</h3>
+              <ul>
+                <li>Your property is now searchable on our website</li>
+                <li>Interested buyers/tenants can contact you directly</li>
+                <li>You'll receive email notifications for inquiries</li>
+                <li>Our team will help promote your listing</li>
               </ul>
+              
+              <div class="tip">
+                <h4>💡 Tips to get more inquiries:</h4>
+                <ul>
+                  <li>Add high-quality photos of your property</li>
+                  <li>Write a detailed description highlighting key features</li>
+                  <li>Keep your contact information updated</li>
+                  <li>Respond quickly to inquiries</li>
+                </ul>
+              </div>
+              
+              <p>View your live property listing:</p>
+              <a href="${process.env.SITE_URL}" class="button">View Property</a>
+              
+              <p><strong>Need help?</strong> Our support team is always ready to assist you!</p>
+              <p>📞 +91 9876543210 | 📧 support@vasaiproperties.com</p>
+            </div>
+            <div class="footer">
+              <p>© 2024 ${process.env.SITE_NAME}. All rights reserved.</p>
+              <p>Thank you for choosing ${process.env.SITE_NAME}!</p>
             </div>
           </div>
-          
-          <div style="background: #2563eb; color: white; padding: 25px; text-align: center; border-radius: 0 0 10px 10px;">
-            <p style="margin: 0 0 10px 0; font-size: 16px;">Please contact the inquirer directly to discuss further.</p>
-            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
-              <p style="margin: 0; font-size: 14px; font-weight: bold;">Vasai Properties Team</p>
-              <p style="margin: 5px 0 0 0; font-size: 12px; opacity: 0.8;">Connecting property dreams</p>
-            </div>
-          </div>
-        </div>
+        </body>
+        </html>
       `
     };
 
     await transporter.sendMail(mailOptions);
-    return { success: true, message: 'Inquiry email sent successfully' };
-
+    console.log(`✅ Property listed email sent to ${ownerEmail}`);
+    return { success: true };
   } catch (error) {
-    console.error('Inquiry email service error:', error);
-    throw error;
+    console.error('❌ Error sending property listed email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send admin notification for new property
+const sendAdminNotification = async (propertyData, ownerName, ownerEmail) => {
+  try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
+      to: process.env.ADMIN_EMAIL,
+      subject: `🏠 New Property Listed - ${propertyData.title}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Property Listed</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #1f2937; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .property-info { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .button { display: inline-block; background: #16a34a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 10px 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🏠 New Property Listed</h1>
+              <p>Admin Notification</p>
+            </div>
+            <div class="content">
+              <h2>New Property Submission</h2>
+              <p>A new property has been listed on the platform.</p>
+              
+              <div class="property-info">
+                <h3>Property Information:</h3>
+                <p><strong>Title:</strong> ${propertyData.title}</p>
+                <p><strong>Location:</strong> ${propertyData.location}</p>
+                <p><strong>Type:</strong> ${propertyData.type.charAt(0).toUpperCase() + propertyData.type.slice(1)}</p>
+                <p><strong>BHK:</strong> ${propertyData.bhk}</p>
+                <p><strong>Price:</strong> ₹${propertyData.price.toLocaleString()}</p>
+                <p><strong>Status:</strong> For ${propertyData.status}</p>
+                <p><strong>Owner:</strong> ${ownerName}</p>
+                <p><strong>Owner Email:</strong> ${ownerEmail}</p>
+                <p><strong>Listed on:</strong> ${new Date().toLocaleString()}</p>
+              </div>
+              
+              <p>The property has been automatically approved and is now live on the website.</p>
+              
+              <a href="${process.env.SITE_URL}" class="button">View Website</a>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Admin notification sent for property: ${propertyData.title}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error sending admin notification:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Send inquiry notification to property owner
+const sendInquiryNotification = async (propertyData, ownerEmail, ownerName, inquiryData) => {
+  try {
+    const transporter = createTransporter();
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
+      to: ownerEmail,
+      subject: `🔔 New Inquiry for Your Property: ${propertyData.title}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New Property Inquiry</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .inquiry-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2563eb; }
+            .contact-info { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 15px 0; }
+            .button { display: inline-block; background: #2563eb; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔔 New Property Inquiry!</h1>
+              <p>Someone is interested in your property</p>
+            </div>
+            <div class="content">
+              <h2>Hello ${ownerName}!</h2>
+              <p>Great news! You have received a new inquiry for your property listing on ${process.env.SITE_NAME}.</p>
+              
+              <div class="inquiry-card">
+                <h3>📋 Property Details:</h3>
+                <p><strong>Property:</strong> ${propertyData.title}</p>
+                <p><strong>Location:</strong> ${propertyData.location}</p>
+              </div>
+              
+              <div class="inquiry-card">
+                <h3>👤 Inquirer Information:</h3>
+                <p><strong>Name:</strong> ${inquiryData.name}</p>
+                <p><strong>Email:</strong> ${inquiryData.email}</p>
+                <p><strong>Phone:</strong> ${inquiryData.phone}</p>
+                
+                <h4>💬 Message:</h4>
+                <div class="contact-info">
+                  <p>"${inquiryData.message}"</p>
+                </div>
+              </div>
+              
+              <h3>📞 Next Steps:</h3>
+              <ul>
+                <li>Contact the inquirer as soon as possible</li>
+                <li>Answer their questions about the property</li>
+                <li>Schedule a property viewing if they're interested</li>
+                <li>Be professional and responsive</li>
+              </ul>
+              
+              <div class="contact-info">
+                <h4>Quick Contact Options:</h4>
+                <p>📞 <strong>Call:</strong> <a href="tel:${inquiryData.phone}">${inquiryData.phone}</a></p>
+                <p>📧 <strong>Email:</strong> <a href="mailto:${inquiryData.email}">${inquiryData.email}</a></p>
+              </div>
+              
+              <a href="${process.env.SITE_URL}" class="button">View Your Property</a>
+              
+              <p><strong>Tip:</strong> Quick responses lead to better conversion rates. Try to contact the inquirer within a few hours!</p>
+            </div>
+            <div class="footer">
+              <p>© 2024 ${process.env.SITE_NAME}. All rights reserved.</p>
+              <p>This inquiry was sent through ${process.env.SITE_NAME} platform</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Inquiry notification sent to ${ownerEmail}`);
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Error sending inquiry notification:', error);
+    return { success: false, error: error.message };
   }
 };
 
 module.exports = {
-  sendPropertyNotificationEmail,
-  sendInquiryEmail
+  sendWelcomeEmail,
+  sendPropertyListedEmail,
+  sendAdminNotification,
+  sendInquiryNotification
 };

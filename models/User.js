@@ -6,67 +6,47 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Name is required'],
     trim: true,
-    minlength: [2, 'Name must be at least 2 characters long'],
+    minlength: [2, 'Name must be at least 2 characters'],
     maxlength: [50, 'Name cannot exceed 50 characters']
   },
   email: {
-  type: String,
-  lowercase: true,
-  trim: true,
-  default: null,
-  unique: true,   // ✅ prevent duplicates when email exists
-  sparse: true,   // ✅ allow multiple nulls
-  validate: {
-    validator: function (value) {
-      if (!value) return true;
-      return /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(value);
-    },
-    message: 'Please enter a valid email'
-  }
-},
-
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    lowercase: true,
+    trim: true,
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+  },
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
-    unique: true,
     trim: true,
-    match: [
-      /^[\+]?[1-9][\d]{9,14}$/,
-      'Please enter a valid phone number'
-    ]
+    match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
   },
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters long'],
-    select: false // Hidden unless explicitly selected
+    minlength: [6, 'Password must be at least 6 characters']
   },
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
-  },
+  wishlist: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Property'
+  }],
   isActive: {
     type: Boolean,
     default: true
   },
-  wishlist: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Property'
-    }
-  ],
-  profileImage: {
-    type: String,
-    default: null
+  lastLogin: {
+    type: Date
   }
 }, {
   timestamps: true
 });
 
-// ✅ Hash password only if modified or new
-userSchema.pre('save', async function (next) {
+// Hash password before saving
+userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
+  
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
@@ -76,19 +56,13 @@ userSchema.pre('save', async function (next) {
   }
 });
 
-// ✅ Compare candidate password safely
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  if (!candidatePassword) {
-    throw new Error('No password provided for comparison');
-  }
-  if (!this.password) {
-    throw new Error('No password stored in this user document — make sure to use .select("+password") when querying.');
-  }
+// Compare password method
+userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// ✅ Remove sensitive info from API output
-userSchema.methods.toJSON = function () {
+// Remove password from JSON output
+userSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.password;
   return user;
