@@ -99,6 +99,11 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid phone or password" });
     }
 
+     // 🔎 DEBUG LOGS (temporary)
+    console.log("User from DB:", user);
+    console.log("Raw password from request:", password);
+    console.log("Hashed password in DB:", user.password);
+
     // ✅ Compare password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
