@@ -1,5 +1,10 @@
 const express = require("express");
 const { body, validationResult } = require("express-validator");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User"); // adjust path if needed
+const validate = require("../middleware/validation"); // your validation middleware
+
 
 const { auth } = require("../middleware/auth");
 const {

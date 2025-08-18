@@ -87,27 +87,30 @@ const registerUser = async (req, res) => {
 
 
 // ✅ LOGIN USER (Phone only)
+// ✅ LOGIN USER (Phone + Password only)
 const loginUser = async (req, res) => {
   try {
     console.log("📥 Incoming login payload:", req.body);
 
-    const phone = req.body.phone ? req.body.phone.trim().replace(/\D/g, "") : "";
-    const password = req.body.password ? req.body.password.trim() : "";
+    const { phone, password } = req.body;
 
     if (!phone || !password) {
       return res.status(400).json({ message: "Phone and password are required" });
     }
 
-    const user = await User.findOne({ phone });
+    // 🔎 Find user by exact phone
+    const user = await User.findOne({ phone: phone.trim() });
     if (!user) {
       return res.status(401).json({ message: "Invalid phone or password" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password || "");
+    // 🔑 Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid phone or password" });
     }
 
+    // 🎟️ Generate JWT
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -115,21 +118,25 @@ const loginUser = async (req, res) => {
     );
 
     res.json({
+      success: true,
       message: "Login successful",
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        phone: user.phone,
-        role: user.role
-      }
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          phone: user.phone,
+          email: user.email,
+          role: user.role,
+          createdAt: user.createdAt,
+        },
+      },
     });
   } catch (error) {
     console.error("❌ Login error:", error);
     res.status(500).json({ message: "Server error during login" });
   }
 };
-
 
 
 
