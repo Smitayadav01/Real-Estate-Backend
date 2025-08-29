@@ -10,23 +10,36 @@ const router = express.Router();
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', validateUserRegistration, async (req, res) => {
+router.post('/register', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // Check if user exists with same phone OR email (if provided)
+    const existingUser = await User.findOne({
+      $or: [
+        { phone },
+        ...(email ? [{ email }] : [])
+      ]
+    });
+
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'User already exists with this email address'
+        message: 'User already exists with this phone or email'
       });
     }
 
     // Create new user
     const user = new User({
       name,
-      email,
+      email: email || null, // allow null
       phone,
       password
     });
@@ -40,16 +53,18 @@ router.post('/register', validateUserRegistration, async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Send welcome email (don't fail registration if email fails)
-    try {
-      await sendWelcomeEmail(email, name);
-    } catch (emailError) {
-      console.error('Welcome email error:', emailError);
+    // Try sending email only if provided
+    if (email) {
+      try {
+        await sendWelcomeEmail(email, name);
+      } catch (emailError) {
+        console.error('Welcome email error:', emailError);
+      }
     }
 
     res.status(201).json({
       success: true,
-      message: 'Registration successful! Welcome to Vasai Properties.',
+      message: 'Registration successful!',
       data: {
         user: {
           id: user._id,
@@ -65,13 +80,6 @@ router.post('/register', validateUserRegistration, async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email address is already registered'
-      });
-    }
-    
     res.status(500).json({
       success: false,
       message: 'Server error during registration'
@@ -79,19 +87,20 @@ router.post('/register', validateUserRegistration, async (req, res) => {
   }
 });
 
-// @route   POST /api/auth/login
-// @desc    Login user
-// @access  Public
+// @route POST /api/auth/login
 router.post('/login', validateUserLogin, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, phone, password } = req.body;
 
-    // Find user by email
-    const user = await User.findOne({ email });
+    // Find user by email OR phone
+    const user = await User.findOne({
+      $or: [{ email }, { phone }]
+    });
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email/phone or password'
       });
     }
 
@@ -108,7 +117,7 @@ router.post('/login', validateUserLogin, async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email/phone or password'
       });
     }
 
@@ -147,6 +156,7 @@ router.post('/login', validateUserLogin, async (req, res) => {
     });
   }
 });
+
 
 // @route   GET /api/auth/me
 // @desc    Get current user profile
