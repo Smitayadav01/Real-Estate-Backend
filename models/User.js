@@ -25,10 +25,12 @@ const userSchema = new mongoose.Schema({
     match: [/^[\+]?[1-9][\d]{0,15}$/, 'Please enter a valid phone number']
   },
   password: {
-    type: String,
-    required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters']
-  },
+  type: String,
+  required: [true, 'Password is required'],
+  minlength: [6, 'Password must be at least 6 characters'],
+  select: false   // ✅ ensure it's available in queries
+},
+
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Property'

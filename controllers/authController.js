@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 
 // ✅ JWT Generator
 const generateToken = (userId) =>
@@ -105,7 +106,7 @@ const loginUser = async (req, res) => {
     console.log("Hashed password in DB:", user.password);
 
     // ✅ Compare password
-    const isMatch = await user.comparePassword(password);
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid phone or password" });
     }
